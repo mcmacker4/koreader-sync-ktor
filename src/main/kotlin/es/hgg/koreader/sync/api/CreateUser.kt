@@ -8,13 +8,16 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.createUser() {
     post("/users/create") {
+        @Serializable
         data class UserInput(val username: String, val password: String)
+        @Serializable
         data class Output(val username: String)
 
         val (username, password) = call.receive<UserInput>()

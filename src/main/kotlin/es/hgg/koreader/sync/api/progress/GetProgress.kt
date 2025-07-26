@@ -1,11 +1,5 @@
 package es.hgg.koreader.sync.api.progress
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonPropertyOrder
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import es.hgg.koreader.sync.Documents
 import es.hgg.koreader.sync.api.sendErrorInternal
 import es.hgg.koreader.sync.loggedUser
@@ -13,32 +7,22 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 
-@JsonPropertyOrder("device_id", "progress", "document", "percentage", "timestamp", "device")
+@Serializable
 data class Output(
     val percentage: Float,
-    @get:JsonSerialize(using = ProgressSerializer::class)
     val progress: String,
     val device: String,
-    @get:JsonProperty("device_id")
+    @SerialName("device_id")
     val deviceId: String?,
     val timestamp: Long,
     val document: String,
 )
-
-class ProgressSerializer : JsonSerializer<String>() {
-    override fun serialize(
-        value: String?,
-        gen: JsonGenerator?,
-        serializers: SerializerProvider?
-    ) {
-        val text = value?.replace("/", "\\/")
-        gen?.writeRawValue("\"$text\"")
-    }
-}
 
 fun Route.getProgress() = get("/syncs/progress/{document}") {
 

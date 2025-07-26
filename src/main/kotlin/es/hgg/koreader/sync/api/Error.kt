@@ -8,7 +8,9 @@ import io.ktor.http.HttpStatusCode.Companion.PaymentRequired
 import io.ktor.http.HttpStatusCode.Companion.Unauthorized
 import io.ktor.server.application.*
 import io.ktor.server.response.*
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Error(val code: Int, val message: String)
 
 // These HTTP status codes make absolutely no sense, but they are taken directly from the original sync server written in lua

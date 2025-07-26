@@ -5,14 +5,11 @@ import es.hgg.koreader.sync.api.createUser
 import es.hgg.koreader.sync.api.progress.getProgress
 import es.hgg.koreader.sync.api.progress.updateProgress
 import io.ktor.http.*
-import io.ktor.serialization.jackson.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.doublereceive.*
-import io.ktor.server.request.receiveText
 import io.ktor.server.routing.*
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -30,22 +27,13 @@ fun Application.module() {
 
 fun Application.configureSerialization() {
     install(ContentNegotiation) {
-        jackson()
-        jackson(ContentType.parse("application/vnd.koreader.v1+json"))
-        //register(
-        //    contentType = ContentType.parse("application/vnd.koreader.v1+json"),
-        //    converter = JacksonConverter()
-        //)
+        json()
+        json(contentType = ContentType.parse("application/vnd.koreader.v1+json"))
     }
 }
 
 fun Application.configureCallLogging() {
-    install(DoubleReceive)
-    install(CallLogging) {
-        format { call ->
-            runBlocking { "Body: ${call.receiveText()}" }
-        }
-    }
+    install(CallLogging)
 }
 
 fun Application.configureRouting() {
