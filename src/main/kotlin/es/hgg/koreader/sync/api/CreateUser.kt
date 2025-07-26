@@ -1,27 +1,25 @@
 package es.hgg.koreader.sync.api
 
 import es.hgg.koreader.sync.Users
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Routing
-import io.ktor.server.routing.post
-import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import es.hgg.koreader.sync.exists
+import io.ktor.http.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.createUser() {
     post("/users/create") {
-        @Serializable
         data class UserInput(val username: String, val password: String)
-        @Serializable
         data class Output(val username: String)
 
         val (username, password) = call.receive<UserInput>()
 
-        if (createUser(username, password)) {
+        if (createUser(username, password).await()) {
             call.respond(HttpStatusCode.Created, Output(username))
         } else {
             call.sendErrorUserExists()
@@ -29,14 +27,9 @@ fun Routing.createUser() {
     }
 }
 
-fun createUser(username: String, password: String): Boolean = transaction {
-    val count = Users
-        .select(Users.username)
-        .where(Users.username.eq(username))
-        .count()
-
-    if (count > 0)
-        return@transaction false
+suspend fun createUser(username: String, password: String): Deferred<Boolean> = suspendedTransactionAsync(Dispatchers.IO) {
+    if (Users.exists { Users.username eq username })
+        return@suspendedTransactionAsync false
 
     Users.insert {
         it[Users.username] = username

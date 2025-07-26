@@ -7,8 +7,8 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.sql.transactions.transaction
+import kotlinx.coroutines.Dispatchers
+import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.jetbrains.exposed.sql.upsert
 
 fun Route.updateProgress() = put("/syncs/progress") {
@@ -21,6 +21,8 @@ fun Route.updateProgress() = put("/syncs/progress") {
         val percentage: Float,
     )
 
+    data class Output(val document: String, val timestamp: Long)
+
     val timestamp = java.time.Instant.now().epochSecond
 
     val input = call.receive<DocumentInput>()
@@ -29,7 +31,7 @@ fun Route.updateProgress() = put("/syncs/progress") {
     // Should only be reached when authenticated
     val user = call.loggedUser!!
 
-    transaction {
+    suspendedTransactionAsync(Dispatchers.IO) {
 
         Documents.upsert {
             it[Documents.user] = user
@@ -43,10 +45,7 @@ fun Route.updateProgress() = put("/syncs/progress") {
             it[Documents.timestamp] = timestamp
         }
 
-    }
-
-    @Serializable
-    data class Output(val document: String, val timestamp: Long)
+    }.await()
 
     val output = Output(input.document, timestamp)
     println("Output: $output")

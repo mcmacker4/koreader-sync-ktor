@@ -1,6 +1,9 @@
 package es.hgg.koreader.sync
 
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.selectAll
 
 object Users : Table("users") {
     val username = varchar("username", 60)
@@ -27,3 +30,6 @@ object Documents : Table("documents") {
         foreignKey(user to Users.username)
     }
 }
+
+fun Table.exists(pred: SqlExpressionBuilder.() -> Op<Boolean>) =
+    !selectAll().where(pred).limit(1).empty()

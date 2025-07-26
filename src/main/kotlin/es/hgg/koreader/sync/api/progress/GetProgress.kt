@@ -12,9 +12,10 @@ import es.hgg.koreader.sync.loggedUser
 import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 
 @JsonPropertyOrder("device_id", "progress", "document", "percentage", "timestamp", "device")
 data class Output(
@@ -44,11 +45,11 @@ fun Route.getProgress() = get("/syncs/progress/{document}") {
     val document = call.parameters["document"]!!
     val user = call.loggedUser!!
 
-    val data = transaction {
+    val data = suspendedTransactionAsync(Dispatchers.IO) {
         Documents.selectAll().where {
             (Documents.document eq document) and (Documents.user eq user)
         }.singleOrNull()
-    }
+    }.await()
 
     if (data == null) {
         call.sendErrorInternal()

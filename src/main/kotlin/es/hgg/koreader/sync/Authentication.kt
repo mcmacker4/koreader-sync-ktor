@@ -3,8 +3,10 @@ package es.hgg.koreader.sync
 import es.hgg.koreader.sync.api.sendErrorUnauthorized
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.mindrot.jbcrypt.BCrypt
 
 val KOReaderAuthPlugin = createRouteScopedPlugin("KOReaderAuth") {
@@ -14,7 +16,7 @@ val KOReaderAuthPlugin = createRouteScopedPlugin("KOReaderAuth") {
         val username = call.request.headers["x-auth-user"]
         val password = call.request.headers["x-auth-key"]
 
-        if (username == null || password == null || !authenticate(username, password)) {
+        if (username == null || password == null || !authenticate(username, password).await()) {
             call.sendErrorUnauthorized()
         }
     }
@@ -37,7 +39,7 @@ fun Route.authenticate(
     return child
 }
 
-fun authenticate(username: String, password: String): Boolean = transaction {
+suspend fun authenticate(username: String, password: String): Deferred<Boolean> = suspendedTransactionAsync(Dispatchers.IO) {
     Users
         .select(Users.pwHash)
         .where(Users.username.eq(username))

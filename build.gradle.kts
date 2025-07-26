@@ -20,7 +20,6 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.contentNegotiation)
-    implementation(libs.ktor.server.serialization)
     implementation(libs.ktor.server.callLogging)
     implementation(libs.ktor.server.doubleReceive)
     implementation(libs.ktor.serialization.jackson)
