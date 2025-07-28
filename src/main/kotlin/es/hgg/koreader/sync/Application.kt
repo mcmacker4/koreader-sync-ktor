@@ -47,14 +47,13 @@ fun Application.configureRouting() {
     }
 }
 
-fun configureDatabases() {
-    Database.connect(
-        url = "jdbc:sqlite:data.db",
-        //driver = "org.h2.Driver",
-        driver = "org.sqlite.JDBC",
-        user = "root",
-        password = "",
-    )
+fun Application.configureDatabases() {
+    val url = environment.config.property("jdbc.url").getString()
+    val driver = environment.config.property("jdbc.driver").getString()
+    val user = environment.config.propertyOrNull("jdbc.user")?.getString() ?: ""
+    val password = environment.config.propertyOrNull("jdbc.password")?.getString() ?: ""
+
+    Database.connect(url = url, driver = driver, user = user, password = password)
 
     transaction {
         SchemaUtils.create(Users, Documents)

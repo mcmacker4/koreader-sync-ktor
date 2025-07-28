@@ -1,1 +1,1 @@
-rootProject.name = "koreader-sync-server"
+rootProject.name = "koreader-sync-ktor"

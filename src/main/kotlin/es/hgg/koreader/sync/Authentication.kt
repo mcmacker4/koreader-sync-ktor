@@ -9,6 +9,9 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.mindrot.jbcrypt.BCrypt
 
+// This could've been an authentication provider instead,
+// but it would've taken a lot more time and effort.
+// This works fine.
 val KOReaderAuthPlugin = createRouteScopedPlugin("KOReaderAuth") {
     onCall { call ->
         if (call.isHandled) return@onCall
