@@ -53,6 +53,8 @@ fun Application.configureDatabases() {
     val user = environment.config.propertyOrNull("jdbc.user")?.getString() ?: ""
     val password = environment.config.propertyOrNull("jdbc.password")?.getString() ?: ""
 
+    log.info("Connecting to Database at $url (driver: $driver)")
+
     Database.connect(url = url, driver = driver, user = user, password = password)
 
     transaction {

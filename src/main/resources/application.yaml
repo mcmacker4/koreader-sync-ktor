@@ -5,7 +5,7 @@ ktor:
     deployment:
         port: $?PORT:8080
 jdbc:
-    url: "$?DB_URL:jdbc:sqlite:kosync.db"
-    driver: "$?DB_DRIVER:org.sqlite.JDBC"
+    url: $DB_URL:jdbc:sqlite:kosync.db
+    driver: $DB_DRIVER:org.sqlite.JDBC
     user: $?DB_USER
     password: $?DB_PASSWORD
