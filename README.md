@@ -1,42 +1,58 @@
 # koreader-sync-server
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+A rewrite of [koreader-sync-server](https://github.com/koreader/koreader-sync-server)
+in Kotlin using Ktor and Exposed.
 
-Here are some useful links to get you started:
+By using Exposed, it adds support for a few different DBMS like MySQL, PostgreSQL and SQLite.
 
-- [Ktor Documentation](https://ktor.io/docs/home.html)
-- [Ktor GitHub page](https://github.com/ktorio/ktor)
-- The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.
+It uses SQLite by default.
 
-## Features
-
-Here's a list of features included in this project:
-
-| Name                                                                   | Description                                                                        |
-| ------------------------------------------------------------------------|------------------------------------------------------------------------------------ |
-| [Routing](https://start.ktor.io/p/routing)                             | Provides a structured routing DSL                                                  |
-| [Content Negotiation](https://start.ktor.io/p/content-negotiation)     | Provides automatic content conversion according to Content-Type and Accept headers |
-| [kotlinx.serialization](https://start.ktor.io/p/kotlinx-serialization) | Handles JSON serialization using kotlinx.serialization library                     |
-| [Exposed](https://start.ktor.io/p/exposed)                             | Adds Exposed database to your application                                          |
-
-## Building & Running
-
-To build or run the project, use one of the following tasks:
-
-| Task                          | Description                                                          |
-| -------------------------------|---------------------------------------------------------------------- |
-| `./gradlew test`              | Run the tests                                                        |
-| `./gradlew build`             | Build everything                                                     |
-| `buildFatJar`                 | Build an executable JAR of the server with all dependencies included |
-| `buildImage`                  | Build the docker image to use with the fat JAR                       |
-| `publishImageToLocalRegistry` | Publish the docker image locally                                     |
-| `run`                         | Run the server                                                       |
-| `runDocker`                   | Run using the local docker image                                     |
-
-If the server starts successfully, you'll see the following output:
-
+### Building
+```bash
+./gradlew buildFatJar
 ```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
+This generates the file `build/libs/koreader-sync-ktor-all.jar`.
+
+### Running
+```bash
+java -jar koreader-sync-ktor-all.jar
 ```
 
+### Environment variables
+```bash
+PORT=8080 # The port to listen to http calls
+
+# The URL to the database
+DB_URL="jdbc:sqlite:koreader.db" # SQLite example. This is the default if not specified
+DB_URL="jdbc:mariadb://localhost:3306/koreader-sync" # MariaDB Example
+
+# The fully qualified name of the JDBC Driver. If not declared, SQLite driver is used by default.
+DB_DRIVER="org.mariadb.jdbc.Driver" # Example for mariadb
+
+DB_USER="koreader" # The database user, not needed when using SQLite
+DB_PASSWORD="readerko" # The password for the database user, not needed when using SQLite
+```
+
+### Adding support for other databases
+You need to download the appropiate JDBC driver for the database you are going to use.
+Then add it to the classpath when running the server, like this:
+```bash
+java -cp "<path-to-jdbc-driver-jar>:koreader-sync-ktor-all.jar" es.hgg.koreader.sync.ApplicationKt
+```
+
+### Using Docker
+
+To build the docker image just run:
+```bash
+docker build -t koreader-sync-server .
+```
+
+To run the docker image:
+```bash
+docker run -d --rm koreader-sync-server
+```
+
+#### Docker noteworthy paths
+
+- `/app/data`: When using sqlite, the database is stored in this folder by default (unless overriden with the `DB_URL` variable). Mount a volume to this path to persist the database across containers.
+- `/app/drivers`: This folder is scanned for extra Jar files. This is where you need to mount the JDBC driver for the database you are going to use. The name of the jar file inside the volume is unimportant.
