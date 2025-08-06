@@ -1,12 +1,15 @@
 package es.hgg.koreader.sync
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import arrow.core.raise.ensureNotNull
 import es.hgg.koreader.sync.api.sendErrorUnauthorized
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
+import kotlinx.coroutines.async
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 
 // This could've been an authentication provider instead,
@@ -14,12 +17,10 @@ import org.mindrot.jbcrypt.BCrypt
 // This works fine.
 val KOReaderAuthPlugin = createRouteScopedPlugin("KOReaderAuth") {
     onCall { call ->
-        if (call.isHandled) return@onCall
+        if (call.isHandled)
+            return@onCall
 
-        val username = call.request.headers["x-auth-user"]
-        val password = call.request.headers["x-auth-key"]
-
-        if (username == null || password == null || !authenticate(username, password).await()) {
+        authenticateUser(call).onLeft {
             call.sendErrorUnauthorized()
         }
     }
@@ -42,13 +43,23 @@ fun Route.authenticate(
     return child
 }
 
-suspend fun authenticate(username: String, password: String): Deferred<Boolean> = suspendedTransactionAsync(Dispatchers.IO) {
-    Users
-        .select(Users.pwHash)
-        .where(Users.username.eq(username))
-        .singleOrNull()?.let { user ->
-            BCrypt.checkpw(password, user[Users.pwHash])
-        } ?: false
+object Unauthorized
+
+suspend fun authenticateUser(call: PipelineCall): Either<Unauthorized, Unit> = either {
+    val username = ensureNotNull(call.request.headers["x-auth-user"]) { Unauthorized }
+    val password = ensureNotNull(call.request.headers["x-auth-key"]) { Unauthorized }
+
+    val pwHash = call.async(Dispatchers.IO) { findPasswordHash(username) }.await().bind()
+
+    ensure(BCrypt.checkpw(password, pwHash)) { Unauthorized }
+}
+
+fun findPasswordHash(username: String): Either<Unauthorized, String> = transaction {
+    either {
+        ensureNotNull(
+            Users.select(Users.pwHash).where { Users.username eq username }.singleOrNull()?.get(Users.pwHash)
+        ) { Unauthorized }
+    }
 }
 
 val ApplicationCall.loggedUser get(): String? = request.headers["x-auth-user"]

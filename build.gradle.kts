@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.sqlite)
     implementation(libs.logback)
+    implementation(libs.arrow.core)
     implementation(libs.bcrypt)
     implementation(libs.ktor.server.config.yaml)
     testImplementation(libs.ktor.server.test.host)

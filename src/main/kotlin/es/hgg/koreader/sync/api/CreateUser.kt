@@ -1,16 +1,19 @@
 package es.hgg.koreader.sync.api
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
 import es.hgg.koreader.sync.Users
 import es.hgg.koreader.sync.exists
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.createUser() {
@@ -22,24 +25,26 @@ fun Routing.createUser() {
 
         val (username, password) = call.receive<UserInput>()
 
-        if (createUser(username, password).await()) {
-            call.respond(HttpStatusCode.Created, Output(username))
-        } else {
-            call.sendErrorUserExists()
-        }
+        call.async(Dispatchers.IO) {
+            createDatabaseUser(username, password)
+        }.await().fold(
+            { call.respond(HttpStatusCode.Created, Output(username)) },
+            { call.sendErrorUserExists() },
+        )
     }
 }
 
-suspend fun createUser(username: String, password: String): Deferred<Boolean> = suspendedTransactionAsync(Dispatchers.IO) {
-    if (Users.exists { Users.username eq username })
-        return@suspendedTransactionAsync false
+object UserExists
 
-    Users.insert {
-        it[Users.username] = username
-        it[Users.pwHash] = hashPassword(password)
+fun createDatabaseUser(username: String, password: String): Either<UserExists, Unit> = transaction {
+    either {
+        ensure(!Users.exists { Users.username eq username }) { UserExists }
+
+        Users.insert {
+            it[Users.username] = username
+            it[Users.pwHash] = hashPassword(password)
+        }
     }
-
-    true
 }
 
 fun hashPassword(password: String): String {
