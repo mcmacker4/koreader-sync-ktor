@@ -1,9 +1,11 @@
 package es.hgg.koreader.sync
 
 import arrow.core.Either
+import arrow.core.left
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.raise.ensureNotNull
+import arrow.core.right
 import es.hgg.koreader.sync.api.sendErrorUnauthorized
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
@@ -17,8 +19,7 @@ import org.mindrot.jbcrypt.BCrypt
 // This works fine.
 val KOReaderAuthPlugin = createRouteScopedPlugin("KOReaderAuth") {
     onCall { call ->
-        if (call.isHandled)
-            return@onCall
+        if (call.isHandled) return@onCall
 
         authenticateUser(call).onLeft {
             call.sendErrorUnauthorized()
@@ -36,11 +37,9 @@ object TransparentRouteSelector : RouteSelector() {
 
 fun Route.authenticate(
     build: Route.() -> Unit
-): Route {
-    val child = createChild(TransparentRouteSelector)
-    child.install(KOReaderAuthPlugin)
-    child.build()
-    return child
+) = createChild(TransparentRouteSelector).apply {
+    install(KOReaderAuthPlugin)
+    build()
 }
 
 object Unauthorized
@@ -55,11 +54,11 @@ suspend fun authenticateUser(call: PipelineCall): Either<Unauthorized, Unit> = e
 }
 
 fun findPasswordHash(username: String): Either<Unauthorized, String> = transaction {
-    either {
-        ensureNotNull(
-            Users.select(Users.pwHash).where { Users.username eq username }.singleOrNull()?.get(Users.pwHash)
-        ) { Unauthorized }
-    }
+    Users.select(Users.pwHash).where {
+        Users.username eq username
+    }.singleOrNull()?.let {
+        it[Users.pwHash].right()
+    } ?: Unauthorized.left()
 }
 
 val ApplicationCall.loggedUser get(): String? = request.headers["x-auth-user"]
