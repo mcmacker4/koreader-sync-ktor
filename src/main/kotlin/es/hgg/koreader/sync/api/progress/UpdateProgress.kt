@@ -7,7 +7,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -30,11 +30,11 @@ data class DocumentInput(
 fun Route.updateProgress() = put("/syncs/progress") {
     val input = call.receive<DocumentInput>()
 
-    // Should only be reached when authenticated
-    val user = call.loggedUser!!
-
     val timestamp = Instant.now().epochSecond
-    call.launch(Dispatchers.IO) { updateDatabase(user, input, timestamp) }.join()
+
+    withContext(Dispatchers.IO) {
+        updateDatabase(call.loggedUser!!, input, timestamp)
+    }
 
     call.respond(HttpStatusCode.OK, Output(input.document, timestamp))
 }

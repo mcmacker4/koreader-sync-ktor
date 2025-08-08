@@ -10,7 +10,7 @@ import es.hgg.koreader.sync.api.sendErrorUnauthorized
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 
@@ -48,7 +48,7 @@ suspend fun authenticateUser(call: PipelineCall): Either<Unauthorized, Unit> = e
     val username = ensureNotNull(call.request.headers["x-auth-user"]) { Unauthorized }
     val password = ensureNotNull(call.request.headers["x-auth-key"]) { Unauthorized }
 
-    val pwHash = call.async(Dispatchers.IO) { findPasswordHash(username) }.await().bind()
+    val pwHash = withContext(Dispatchers.IO) { findPasswordHash(username) }.bind()
 
     ensure(BCrypt.checkpw(password, pwHash)) { Unauthorized }
 }

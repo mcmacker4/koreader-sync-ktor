@@ -9,7 +9,7 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.ResultRow
@@ -35,20 +35,19 @@ fun Route.getProgress() = get("/syncs/progress/{document}") {
     val document = call.parameters["document"]!!
     val user = call.loggedUser!!
 
-    findDocument(user, document).await().fold(
+    findDocument(user, document).fold(
         { call.sendErrorInternal() },
         { document ->
             // Another WTF moment.
             // Client sends header `Accept: application/vnd.koreader.v1+json` asking for a content that doesn't recognize, so it can't deserialize it.
             // So we need to force content-type to json so the client knows how to deserialize it.
             call.response.header("Content-Type", "application/json")
-
             call.respond(HttpStatusCode.OK, document)
         },
     )
 }
 
-fun RoutingContext.findDocument(user: String, document: String) = call.async(Dispatchers.IO) {
+suspend fun findDocument(user: String, document: String) = withContext(Dispatchers.IO) {
     transaction {
         Documents.selectAll()
             .where { (Documents.document eq document) and (Documents.user eq user) }

@@ -10,11 +10,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.mindrot.jbcrypt.BCrypt
+import org.mindrot.jbcrypt.BCrypt.gensalt
+import org.mindrot.jbcrypt.BCrypt.hashpw
 
 fun Routing.createUser() {
     post("/users/create") {
@@ -25,11 +26,11 @@ fun Routing.createUser() {
 
         val (username, password) = call.receive<UserInput>()
 
-        call.async(Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             createDatabaseUser(username, password)
-        }.await().fold(
-            { call.respond(HttpStatusCode.Created, Output(username)) },
+        }.fold(
             { call.sendErrorUserExists() },
+            { call.respond(HttpStatusCode.Created, Output(username)) },
         )
     }
 }
@@ -42,12 +43,8 @@ fun createDatabaseUser(username: String, password: String): Either<UserExists, U
 
         Users.insert {
             it[Users.username] = username
-            it[Users.pwHash] = hashPassword(password)
+            it[Users.pwHash] = hashpw(password, gensalt())
         }
     }
 }
 
-fun hashPassword(password: String): String {
-    val salt = BCrypt.gensalt()!!
-    return BCrypt.hashpw(password, salt)!!
-}
